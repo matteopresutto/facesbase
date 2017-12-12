@@ -1,0 +1,6 @@
+[submodule "sphereface"]
+	path = sphereface
+	url = https://github.com/wy1iu/sphereface
+[submodule "annoy"]
+	path = annoy
+	url = https://github.com/spotify/annoy
