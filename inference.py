@@ -10,7 +10,11 @@ import annoy
 from annoy import AnnoyIndex
 import tqdm
 import random
+from mpl_toolkits.mplot3d import axes3d
+import matplotlib.pyplot as plt
 from evaluation import *
+import pickle
+
 caffe.set_mode_gpu()
 caffe.set_device(0)
 random.seed(0)
@@ -135,5 +139,9 @@ if __name__ == "__main__":
 			toDB,toKeep = trimData(toDbEmbeddings, toKeepEmbeddings, numberOfIdentities, numberOfPhotosPerIdentity)
 			currentResults = testDB(toDB, toKeep)
 			results.append([numberOfIdentities,numberOfPhotosPerIdentity,currentResults])
-	print results
+	fp = open('results500.pkl','wb')
+	pickle.dump(results,fp)
+	fp.flush()
+	fp.close()
+	
 	
