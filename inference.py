@@ -9,9 +9,11 @@ import numpy
 import annoy
 from annoy import AnnoyIndex
 import tqdm
-from evaluation import QueryEvaluator
+import random
+from evaluation import *
 caffe.set_mode_gpu()
 caffe.set_device(0)
+random.seed(0)
 
 featuresLength = 512
 t = AnnoyIndex(featuresLength)
@@ -30,10 +32,16 @@ class spherefaceAnnoyDatabase():
         	sampleImage = numpy.reshape(sampleImage,(1,)+sampleImage.shape).transpose(0,3,1,2).astype(numpy.float32)
         	net.blobs['data'].data[...]=sampleImage
         	net.forward()
-		return net.blobs['fc5'].data[0]
+		return net.blobs['fc5'].data[0].copy()
 	
 	def addFaceWithName(self, imgPath, name):
 		embedding = self.getEmbedding(imgPath)
+		length = self.index.get_n_items()
+        	self.index.add_item(length, embedding)
+		self.indexToName[length] = name
+		self.nameToIndex[name] = length
+	
+	def addEmbeddingWithName(self, embedding, name):
 		length = self.index.get_n_items()
         	self.index.add_item(length, embedding)
 		self.indexToName[length] = name
@@ -56,6 +64,12 @@ class spherefaceAnnoyDatabase():
                         results[0][i] = self.indexToName[results[0][i]]
 		return results
 	
+	def lookupByEmbedding(self, embedding, numberOfNeighbours):
+		results = self.index.get_nns_by_vector(embedding, numberOfNeighbours, search_k=-1, include_distances=True)
+		for i in xrange(len(results[0])):
+                        results[0][i] = self.indexToName[results[0][i]]
+		return results
+	
 	def lookupByName(self, name, numberOfNeighbours):
 		results = self.index.get_nns_by_item(self.nameToIndex[name], numberOfNeighbours, search_k=-1, include_distances=True)
 		for i in xrange(len(results[0])):
@@ -63,32 +77,63 @@ class spherefaceAnnoyDatabase():
 		return results
 
 
-
 if __name__ == "__main__":
-	limit = None
-	db = spherefaceAnnoyDatabase()
-	print 'Populating the database...'
-	counter = 0
-	for root, dirs, files in tqdm.tqdm(os.walk("dataset/todb", topdown=False)):
-		for name in files:
-			filename = os.path.join(root,name)
-			db.addFaceWithName(filename,filename)
-		counter+=1
-		if(counter==limit):
-			break
 	
-	db.freeze()
-	qe = QueryEvaluator()
-	counter = 0
-	print 'Estimating statistics...'
-	for root, dirs, files in tqdm.tqdm(os.walk("dataset/tokeep", topdown=False)):
-        	for name in files:
-			counter+=1
-			filename = os.path.join(root,name)
-                	result = db.lookupByFace(filename, 50)
+	def getEmbeddings(path):
+		db = spherefaceAnnoyDatabase()
+		result={}
+		for root, dirs, files in tqdm.tqdm(os.walk(path, topdown=False)):
+			for name in files:
+				filename = os.path.join(root,name)
+				print filename
+				result[filename]=db.getEmbedding(filename)
+		return result
+	
+	def testDB(toDB, toKeep):
+		evaluator = QueryEvaluator()
+		db = spherefaceAnnoyDatabase()
+		for filename in toDB:
+			embedding = toDB[filename]
+			db.addEmbeddingWithName(embedding,filename)
+		db.freeze()
+		for filename in toKeep:
+			embedding = toKeep[filename]
+			result = db.lookupByEmbedding(embedding, 50)
 			identity = filename.split('/')[2]
 			orderedIdentitiesRetrieved = [i.split('/')[2] for i in result[0]]
-			qe.update(identity,orderedIdentitiesRetrieved)
-		if(counter==limit):
-			break
-	print qe.getEvaluation()
+			evaluator.update(identity, orderedIdentitiesRetrieved)
+		return evaluator.getEvaluation()
+	
+	def trimData(toDB, toKeep, numberOfIdentities, numberOfPhotosPerIdentity):
+		identities = [f.split('/')[2] for f in toKeepEmbeddings]
+		sampledIdentities = set(random.sample(identities, numberOfIdentities))
+		newToDB = {}
+		toDBKeys = toDB.keys()
+		random.shuffle(toDBKeys)
+		identityFrequenciesToDB = {}
+		for identity in sampledIdentities:
+			if(not identity in identityFrequenciesToDB):
+				identityFrequenciesToDB[identity] = 0
+		for filename in toDBKeys:
+			currentIdentity = filename.split('/')[2]
+			if(currentIdentity in sampledIdentities):
+				if(identityFrequenciesToDB[currentIdentity]<numberOfPhotosPerIdentity):
+					newToDB[filename]=toDB[filename]
+					identityFrequenciesToDB[currentIdentity]+=1
+		newToKeep = {}
+		for filename in toKeep:
+			currentIdentity = filename.split('/')[2]
+			if(currentIdentity in sampledIdentities):
+				newToKeep[filename]=toKeep[filename]
+		return newToDB, newToKeep
+		
+	toDbEmbeddings = getEmbeddings('dataset/todb')
+	toKeepEmbeddings = getEmbeddings('dataset/tokeep')
+	results = []
+	for numberOfIdentities in tqdm.tqdm(xrange(10,501,50)):
+		for numberOfPhotosPerIdentity in xrange(1,11):
+			toDB,toKeep = trimData(toDbEmbeddings, toKeepEmbeddings, numberOfIdentities, numberOfPhotosPerIdentity)
+			currentResults = testDB(toDB, toKeep)
+			results.append([numberOfIdentities,numberOfPhotosPerIdentity,currentResults])
+	print results
+	
