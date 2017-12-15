@@ -11,7 +11,6 @@ def computeAndSaveGraphs(pklFilename,measure = 'hit@10'):
 	fp = open(pklFilename,'rb')
 	results = pickle.load(fp)
 	top10 = [[i[0],i[1],i[2][measure]] for i in results]
-	print top10
 	x = sorted(list(set([i[0] for i in top10])))
 	xmap = {i:index for index,i in enumerate(x)}
 	y = sorted(list(set([i[1] for i in top10])))
@@ -27,7 +26,7 @@ def computeAndSaveGraphs(pklFilename,measure = 'hit@10'):
 	ax.set_zlabel(measure)
 	ax.set_ylabel('Photos per identity')
 	ax.set_xlabel('Number of identities')
-	if(measure!='MAP'):
+	if(measure!='MAP' and measure!='FOP95' and measure!='FOP99'):
 		ax.set_zlim3d(0,1)
 	plt.show()
 	plt.savefig(pklFilename.split('.')[0]+'_'+measure+'.png', format='png')
@@ -36,3 +35,5 @@ computeAndSaveGraphs('results500.pkl',measure = 'hit@10')
 computeAndSaveGraphs('results500.pkl',measure = 'hit@3')
 computeAndSaveGraphs('results500.pkl',measure = 'hit@1')
 computeAndSaveGraphs('results500.pkl',measure = 'MAP')
+computeAndSaveGraphs('results500.pkl',measure = 'FOP95')
+computeAndSaveGraphs('results500.pkl',measure = 'FOP99')

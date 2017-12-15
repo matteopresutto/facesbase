@@ -69,12 +69,16 @@ class spherefaceAnnoyDatabase():
 		return results
 	
 	def lookupByEmbedding(self, embedding, numberOfNeighbours):
+		if(numberOfNeighbours==-1):
+			numberOfNeighbours = self.index.get_n_items()
 		results = self.index.get_nns_by_vector(embedding, numberOfNeighbours, search_k=-1, include_distances=True)
 		for i in xrange(len(results[0])):
                         results[0][i] = self.indexToName[results[0][i]]
 		return results
 	
 	def lookupByName(self, name, numberOfNeighbours):
+		if(numberOfNeighbours==-1):
+			numberOfNeighbours = self.index.get_n_items()
 		results = self.index.get_nns_by_item(self.nameToIndex[name], numberOfNeighbours, search_k=-1, include_distances=True)
 		for i in xrange(len(results[0])):
 			results[0][i] = self.indexToName[results[0][i]]
@@ -89,7 +93,6 @@ if __name__ == "__main__":
 		for root, dirs, files in tqdm.tqdm(os.walk(path, topdown=False)):
 			for name in files:
 				filename = os.path.join(root,name)
-				print filename
 				result[filename]=db.getEmbedding(filename)
 		return result
 	
@@ -102,7 +105,7 @@ if __name__ == "__main__":
 		db.freeze()
 		for filename in toKeep:
 			embedding = toKeep[filename]
-			result = db.lookupByEmbedding(embedding, 50)
+			result = db.lookupByEmbedding(embedding, -1)
 			identity = filename.split('/')[2]
 			orderedIdentitiesRetrieved = [i.split('/')[2] for i in result[0]]
 			evaluator.update(identity, orderedIdentitiesRetrieved)
@@ -133,6 +136,7 @@ if __name__ == "__main__":
 		
 	toDbEmbeddings = getEmbeddings('dataset/todb')
 	toKeepEmbeddings = getEmbeddings('dataset/tokeep')
+	toDbEmbeddings, toKeepEmbeddings = trimData(toDbEmbeddings, toKeepEmbeddings, 500, 10)
 	results = []
 	for numberOfIdentities in tqdm.tqdm(xrange(10,501,50)):
 		for numberOfPhotosPerIdentity in xrange(1,11):
