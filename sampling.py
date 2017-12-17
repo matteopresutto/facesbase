@@ -7,7 +7,7 @@ random.seed(0)
 
 identitiesFD = tarfile.open("identities_tight_cropped.tar.gz")
 
-numberOfIdentities = 50000
+numberOfIdentities = 5000
 numberOfPhotosPerIdentity = 11
 
 print "Retrieving files in archive..."
@@ -46,9 +46,9 @@ if not os.path.exists("dataset/tokeep"):
 todb = set()
 tokeep = set()
 for identity in finalSamples:
-	todb.add(identity[0])
-	todb.add(identity[1])
-	tokeep.add(identity[2])
+	tokeep.add(identity[0])
+	for i in xrange(1,len(identity)):
+		todb.add(identity[i])
 
 identitiesFD.close()
 

@@ -136,9 +136,8 @@ if __name__ == "__main__":
 		
 	toDbEmbeddings = getEmbeddings('dataset/todb')
 	toKeepEmbeddings = getEmbeddings('dataset/tokeep')
-	toDbEmbeddings, toKeepEmbeddings = trimData(toDbEmbeddings, toKeepEmbeddings, 500, 10)
 	results = []
-	for numberOfIdentities in tqdm.tqdm(xrange(10,501,50)):
+	for numberOfIdentities in tqdm.tqdm(xrange(50,5001,50)):
 		for numberOfPhotosPerIdentity in xrange(1,11):
 			toDB,toKeep = trimData(toDbEmbeddings, toKeepEmbeddings, numberOfIdentities, numberOfPhotosPerIdentity)
 			currentResults = testDB(toDB, toKeep)
